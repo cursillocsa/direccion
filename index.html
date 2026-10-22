@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel de jefes · Gauss</title>
+<style>
+:root{--rojo:#c0392b;--negro:#201e1e;--fondo:#f3f5f9;--azul:#1f4e79;--verde:#1b8a3a}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--fondo);color:#222;font-size:15px}
+header{background:var(--negro);color:#fff;padding:12px 16px;border-bottom:4px solid var(--rojo);position:sticky;top:0;z-index:5}
+.top{display:flex;align-items:center;gap:10px}
+header h1{margin:0;font-size:19px;flex:1}header h1 span{color:#ff6b5e}
+.tabs{display:flex;gap:6px;margin-top:10px;overflow-x:auto}
+.tab{background:#3a3636;color:#ddd;border:0;border-radius:18px;padding:8px 14px;font-size:14px;font-weight:bold;cursor:pointer;white-space:nowrap;font-family:inherit}
+.tab.on{background:#fff;color:var(--negro)}
+main{padding:14px 16px 70px;max-width:1000px;margin:0 auto}
+.card{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.card h2{margin:0 0 10px;font-size:16px;color:var(--azul)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.k{background:#f3f5f9;border-radius:10px;padding:10px}
+.k span{font-size:11px;color:#666;text-transform:uppercase;display:block}
+.k b{display:block;font-size:20px;margin-top:3px}
+.k small{display:block;font-size:12px;color:#666;margin-top:3px}
+.r{background:#f4cccc}.y{background:#fff2cc}.g{background:#d9ead3}
+.up{color:var(--verde)}.down{color:var(--rojo)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#d9e2f3;text-align:left;padding:6px;white-space:nowrap}
+td{padding:6px;border-bottom:1px solid #eee;vertical-align:top}
+td.n,th.n{text-align:right;white-space:nowrap}
+.scroll{overflow-x:auto}
+input,select{font-size:16px;padding:9px;border:1px solid #bbb;border-radius:8px;background:#fff;font-family:inherit}
+#q{width:100%;font-size:17px;padding:11px 12px;border:0;border-radius:8px;margin-top:10px;display:none}
+#res{background:#fff;border-radius:8px;margin-top:6px;max-height:60vh;overflow:auto;display:none;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+#res div{padding:10px 12px;border-bottom:1px solid #eee;color:#222;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+#res div:hover{background:#e8f0fe}#res small{color:#777}
+.badge{font-size:12px;font-weight:bold;border-radius:12px;padding:3px 8px;white-space:nowrap;align-self:center}
+.bR{background:#f4cccc;color:#a61c1c}.bG{background:#d9ead3;color:#1b5e20}
+.nom{font-size:21px;font-weight:bold;margin:0}.sub{color:#555;margin-top:4px}
+.wa{display:inline-block;background:#25d366;color:#fff;text-decoration:none;padding:7px 12px;border-radius:18px;margin:8px 6px 0 0;font-weight:bold;font-size:13px}
+.vacio{color:#999;font-style:italic}
+#msg{color:#666;text-align:center;margin-top:30px}
+.err{color:var(--rojo);font-weight:bold}
+.btn{border:0;border-radius:10px;padding:11px 16px;font-size:15px;font-weight:bold;color:#fff;background:var(--azul);cursor:pointer;font-family:inherit}
+.btn:disabled{opacity:.5}.btn.rojo{background:var(--rojo)}.btn.gr{background:#666}
+.mini{border:0;border-radius:6px;padding:5px 9px;font-size:13px;cursor:pointer;background:#eee;font-family:inherit}
+.chip{display:inline-block;border-radius:6px;padding:4px 8px;font-weight:bold}
+.bar{background:#d9e2f3;border-radius:4px;height:10px;position:relative;min-width:60px}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--azul);border-radius:4px}
+.sel-sala{font-size:15px;padding:6px;min-width:84px}
+.choque{background:#f4cccc!important;border-color:#c0392b!important;color:#a61c1c;font-weight:bold}
+.aviso{background:#fff2cc;border-radius:8px;padding:10px;margin-top:10px;font-size:14px}
+.subtabs{display:flex;gap:6px;margin-bottom:12px}
+.subtabs button{flex:1}
+.fila{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.fila label{font-size:13px;font-weight:bold;display:block;margin-bottom:4px}
+.ayuda{color:#777;font-size:12px}
+</style></head><body>
+<header><div class="top"><h1>👔 Panel de jefes <span>Gauss</span></h1></div>
+<div class="tabs" id="tabs" style="display:none">
+<button class="tab" data-t="alumno" onclick="ir('alumno')">🔎 Alumno</button>
+<button class="tab" data-t="mes" onclick="ir('mes')">📅 Cómo va el mes</button>
+<button class="tab" data-t="grupos" onclick="ir('grupos')">🏫 Grupos y salas</button>
+<button class="tab" data-t="tend" onclick="ir('tend')">📈 Tendencias</button>
+</div>
+<input id="q" placeholder="Buscá al alumno por nombre, apellido o ID…" autocomplete="off" oninput="filtrar()">
+<div id="res"></div></header>
+<main><div id="app"></div><div id="msg">Cargando…</div></main>
+<script>
+var API='https://script.google.com/macros/s/AKfycbzPNqOlPMgP1lme__szBCxU4kzz7fSJ3PxLxUZu_CcywI5ftsESe6e7hL63z1Xp7M6U/exec';
+var PIN='';try{PIN=localStorage.getItem('gaussPinJefe')||'';}catch(e){}
+var L=null,GR=null,TAB='';
+function el(i){return document.getElementById(i);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function sa(s){return String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function gs(n){n=Number(n)||0;return (n<0?'− ':'')+'Gs. '+Math.round(Math.abs(n)).toLocaleString('es-PY');}
+function mil(n){n=Number(n)||0;return Math.round(n).toLocaleString('es-PY');}
+function guardado(k,v){try{if(v===undefined)return localStorage.getItem(k)||'';localStorage.setItem(k,v);}catch(e){return '';}}
+function msg(t){el('msg').innerHTML=t||'';}
+function pedir(acc,params,ok,mal){
+ var q='accion='+acc+'&pin='+encodeURIComponent(PIN);
+ for(var k in params)q+='&'+k+'='+encodeURIComponent(params[k]==null?'':params[k]);
+ fetch(API+'?'+q,{credentials:'omit'}).then(function(r){return r.json();})
+ .then(function(d){if(d&&d.error)mal({message:d.error});else ok(d);})
+ .catch(function(){mal({message:'No pude conectar. Revisá la conexión y probá de nuevo.'});});}
+function falla(e,dest){var m=String(e.message||e);
+ if(m.indexOf('PIN:')>=0){pedirPin(m.replace(/^.*PIN:\s*/,''));return;}
+ if(dest&&el(dest))el(dest).innerHTML='<div class="err">⚠️ '+esc(m)+'</div>';else msg('<span class="err">⚠️ '+esc(m)+'</span>');}
+function pedirPin(m){el('tabs').style.display='none';el('q').style.display='none';msg('');
+ el('app').innerHTML='<div class="card" style="text-align:center"><h2>🔒 Panel de jefes</h2><div style="margin-bottom:10px;color:'+(m.indexOf('Ingres')===0?'#555':'#c0392b')+'">'+esc(m)+'</div>'+
+ '<input id="pin" type="password" inputmode="numeric" placeholder="PIN" style="font-size:22px;width:180px;text-align:center"><br><button class="btn rojo" style="margin-top:12px" onclick="entrar()">Entrar</button></div>';
+ var i=el('pin');i.focus();i.onkeydown=function(ev){if(ev.key==='Enter')entrar();};}
+function entrar(){PIN=el('pin').value.trim();guardado('gaussPinJefe',PIN);cargar();}
+function cargar(){el('app').innerHTML='';msg('Cargando… (unos segundos)');
+ pedir('lista',{},function(d){L=d;el('tabs').style.display='flex';ir(guardado('gaussJefeTab')||'alumno');},function(e){falla(e);});}
+cargar();
+function ir(t){TAB=t;guardado('gaussJefeTab',t);msg('');el('res').style.display='none';
+ [].forEach.call(document.querySelectorAll('.tab'),function(b){b.className='tab'+(b.getAttribute('data-t')===t?' on':'');});
+ el('q').style.display=t==='alumno'?'block':'none';window.scrollTo(0,0);
+ if(t==='alumno')inicioAlumno();else if(t==='mes')verMes(guardado('gaussJefeMes')||'');else if(t==='grupos')verGrupos();else verTend();}
+function k(t,v,cl,sub){return '<div class="k '+(cl||'')+'"><span>'+esc(t)+'</span><b>'+(v===''||v==null?'–':v)+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</div>';}
+function delta(a,b,txtPrev,inverso){if(b===null||b===undefined)return '';var d=a-b;if(!d)return 'igual que '+esc(txtPrev);
+ var bien=inverso?d<0:d>0;return '<span class="'+(bien?'up':'down')+'">'+(d>0?'▲ ':'▼ ')+(Math.abs(d)>=1000?mil(Math.abs(d)):Math.abs(d))+'</span> vs '+esc(txtPrev);}
+function tabla(enc,filas,der){der=der||[];
+ if(!filas.length)return '<div class="vacio">— sin datos —</div>';
+ return '<div class="scroll"><table><tr>'+enc.map(function(e,i){return '<th'+(der.indexOf(i)>=0?' class="n"':'')+'>'+esc(e)+'</th>';}).join('')+'</tr>'+
+  filas.map(function(f){return '<tr>'+f.map(function(c,i){return '<td'+(der.indexOf(i)>=0?' class="n"':'')+'>'+c+'</td>';}).join('')+'</tr>';}).join('')+'</table></div>';}
+function waLink(cel,txt){var d=String(cel||'').replace(/\D/g,'');if(d.length<7)return '';if(d.charAt(0)==='0')d='595'+d.slice(1);
+ return '<a class="wa" href="https://wa.me/'+d+'" target="_blank">📲 '+esc(txt)+'</a>';}
+
+// ================= 🔎 ALUMNO =================
+function inicioAlumno(){el('app').innerHTML='';el('q').value='';
+ msg(L?L.alumnos.length+' alumnos. Escribí arriba para buscar.':'');el('q').focus();}
+function filtrar(){var q=sa(el('q').value.trim()),r=el('res');
+ if(!L||q.length<2){r.style.display='none';return;}
+ var p=q.split(/\s+/),h=L.alumnos.filter(function(x){var t=sa(x[0]+' '+x[1]+' '+x[2]);return p.every(function(w){return t.indexOf(w)>=0;});}).slice(0,30);
+ r.innerHTML=h.length?h.map(function(x){return '<div onclick="ficha(\''+esc(x[0])+'\')"><span>'+esc(x[1])+'<br><small>'+esc(x[0])+' · '+esc(x[2]||'sin grupo')+' · '+esc(x[3])+'</small></span>'+
+  '<span class="badge '+(x[4]>0?'bR':'bG')+'">'+(x[4]>0?'Debe '+gs(x[4]):'Al día')+'</span></div>';}).join(''):'<div class="vacio">No hay coincidencias</div>';
+ r.style.display='block';}
+function ficha(id){el('res').style.display='none';el('q').blur();el('app').innerHTML='';msg('Cargando ficha…');
+ pedir('jefeFicha',{id:id},pintarFicha,function(e){falla(e);});}
+function pintarFicha(f){msg('');var c=f.csa||{};
+ var sc=c.sem==='🔴'?'r':(c.sem==='🟡'?'y':(c.sem==='🟢'?'g':''));
+ var pc=function(v){var n=parseFloat(v);return isNaN(n)?'':(n<70?'r':(n<85?'y':'g'));};
+ var h='<div class="card '+sc+'"><div style="display:flex;gap:12px;align-items:center"><div style="font-size:32px">'+esc(c.sem||'')+'</div><div><p class="nom">'+esc(f.nombre)+'</p>'+
+  '<div class="sub">'+esc(f.id)+' · '+esc(f.grupo||'sin grupo')+' · '+esc(f.situacion)+'</div>'+(f.plan?'<div class="sub">Plan: '+esc(f.plan)+'</div>':'')+'</div></div>'+
+  (c.motivos?'<div style="margin-top:8px"><b>Motivos:</b> '+esc(c.motivos)+'</div>':'')+
+  (c.seguimiento?'<div><b>Seguimiento:</b> '+esc(c.seguimiento)+'</div>':'')+'</div>';
+ h+='<div class="card"><h2>💰 Pagos</h2><div class="grid">'+
+  k('Deuda vencida',gs(f.deuda),f.deuda>0?'r':'g',f.multas?'de eso, multas '+gs(f.multas):'')+
+  k('Cuotas vencidas',f.impagas||0,f.impagas>1?'r':'')+
+  k('Próximo vencimiento',f.prox?esc(f.prox.venc):'–','',f.prox?gs(f.prox.monto):'')+
+  (f.favor?k('Saldo a favor',gs(f.favor),'g'):'')+'</div></div>';
+ h+='<div class="card"><h2>📅 Asistencia y notas</h2>'+(f.csa?'<div class="grid">'+
+  k('Asistencia total',c.total===''?'':c.total+'%',pc(c.total))+k('Últimos 30 días',c.d30===''?'':c.d30+'%',pc(c.d30))+
+  k('Faltas esta semana',c.faltasSem||0,c.faltasSem>0?'y':'')+k('Última ausencia',esc(c.ultAus))+
+  k('Promedio exámenes',c.prom,c.prom===''?'':(c.prom<40?'r':(c.prom<60?'y':'g')),c.tend?esc(c.tend):'')+
+  k('Último contacto',esc(c.ultContacto))+'</div>'+(c.prof?'<div class="sub" style="margin-top:8px">Prof. encargado: '+esc(c.prof)+'</div>':''):
+  '<div class="vacio">'+esc(f.csaError||'Todavía no figura en el CSA.')+'</div>')+'</div>';
+ h+='<div class="card"><h2>📇 Contacto</h2><div>Celular: '+esc(f.cel||'–')+'</div><div>Responsable: '+esc(f.resp||'–')+' · '+esc(f.celResp||'–')+'</div>'+
+  waLink(f.cel,'WhatsApp alumno')+waLink(f.celResp,'WhatsApp responsable')+'</div>';
+ var cu=f.cuotas.filter(function(x){return x.estado!=='Pagado'&&x.estado!=='Perdonada';}).concat(f.cuotas.filter(function(x){return x.estado==='Pagado'||x.estado==='Perdonada';}).slice(-3));
+ h+='<div class="card"><h2>🗓️ Cuotas</h2>'+tabla(['Concepto','Vence','Monto','Pagado','Saldo','Estado'],cu.map(function(x){
+  var cl=x.estado==='Vencido'?'r':(x.estado==='Pagado'||x.estado==='Perdonada'?'g':(x.estado==='Parcial'?'y':''));
+  return [esc(x.concepto),esc(x.vence),mil(x.monto),x.pagado?mil(x.pagado):'–',x.saldo?mil(x.saldo):'–','<span class="chip '+cl+'">'+esc(x.estado)+'</span>'];}),[2,3,4])+'</div>';
+ h+='<div class="card"><h2>💵 Últimos pagos</h2>'+tabla(['Fecha','Monto','Medio','Tipo'],f.pagos.map(function(p){return [esc(p.fecha),mil(p.monto),esc(p.medio),esc(p.tipo)];}),[1])+'</div>';
+ if(f.obs&&f.obs.length)h+='<div class="card"><h2>🗒️ Últimas observaciones (CSA)</h2>'+tabla(['Fecha','Tipo','Detalle','Anotó'],f.obs.map(function(o){return [esc(o.fecha),esc(o.tipo),esc(o.detalle),esc(o.quien)];}))+'</div>';
+ if(f.anotaciones&&f.anotaciones.length)h+='<div class="card"><h2>📝 Anotaciones de cobranza</h2>'+tabla(['Fecha','Quién','Anotación'],f.anotaciones.map(function(o){return [esc(o.fecha),esc(o.quien),esc(o.obs)];}))+'</div>';
+ h+='<div style="text-align:center"><button class="btn gr" onclick="inicioAlumno();window.scrollTo(0,0)">🏠 Cerrar ficha</button></div>';
+ el('app').innerHTML=h;window.scrollTo(0,0);}
+
+// ================= 📅 CÓMO VA EL MES =================
+var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function opcionesMes(sel){var d=new Date(),o='';for(var i=0;i<12;i++){var y=d.getFullYear(),m=d.getMonth()+1,v=y+'-'+('0'+m).slice(-2);
+  o+='<option value="'+v+'"'+(v===sel?' selected':'')+'>'+MESES[m-1].charAt(0).toUpperCase()+MESES[m-1].slice(1)+' '+y+(i===0?' (este mes)':'')+'</option>';d.setMonth(d.getMonth()-1);}return o;}
+function verMes(mes){if(!mes){var d=new Date();mes=d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2);}guardado('gaussJefeMes',mes);
+ el('app').innerHTML='<div class="card"><div class="fila"><div><label>Mes</label><select onchange="verMes(this.value)">'+opcionesMes(mes)+'</select></div></div></div><div id="mesC"><div class="card">Calculando… (puede tardar unos segundos)</div></div>';
+ pedir('jefeMes',{mes:mes},pintarMes,function(e){falla(e,'mesC');});}
+function pintarMes(X){if(TAB!=='mes')return;var h='',pv=X.nombrePrev;
+ var res=X.cob.total-(X.gastos?X.gastos.total:0),cz=X.cobranza,pctC=cz.monto?Math.round((cz.aTiempo+cz.tarde)/cz.monto*100):null;
+ h+='<div class="card"><h2>📅 '+esc(X.titulo)+(X.enCurso?' · hasta hoy ('+esc(X.corte)+')':'')+'</h2><div class="grid">'+
+  k('Cobrado',gs(X.cob.total),'',delta(X.cob.total,X.cobPrev,pv)+'<br>'+X.cob.n+' pagos')+
+  k('Gastos',X.gastos?gs(X.gastos.total):'–','',X.gastos?delta(X.gastos.total,X.gastos.prev,pv,true):'')+
+  k('Resultado (cobrado − gastos)',gs(res),res>=0?'g':'r')+
+  k('Cuotas del mes cobradas',pctC===null?'–':pctC+'%',pctC===null?'':(pctC>=80?'g':(pctC>=60?'y':'r')),'de '+gs(cz.monto)+' que vencían'+(cz.nPend?'<br>'+cz.nPend+' cuotas pendientes ('+gs(cz.pendiente)+')':''))+
+  k('Deuda vencida total',gs(X.deuda.monto),X.deuda.monto>0?'r':'g',X.deuda.n+' alumnos ('+X.deuda.nAct+' activos)<br>'+delta(X.deuda.monto,X.deudaPrev.monto,'fin de '+pv,true))+
+  k('Alumnos activos',X.activos,'',delta(X.activos,X.activosPrev,pv))+
+  k('Nuevos',X.nuevos,'',delta(X.nuevos,X.nuevosPrev,pv))+
+  k('Salieron',X.salieron,X.salieron?'y':'',delta(X.salieron,X.salieronPrev,pv,true)+(X.terminaron?'<br>terminaron: '+X.terminaron:''))+
+  k('Vence el mes que viene',gs(X.prox.monto),'',X.prox.n+' cuotas')+'</div></div>';
+ var medios=Object.keys(X.cob.medio).filter(function(m){return X.cob.medio[m];}).map(function(m){return [esc(m),mil(X.cob.medio[m]),pc(X.cob.medio[m],X.cob.total)];});
+ var de=[['Cuotas vencidas',X.cob.vencida],['Cuotas al día / adelantadas',X.cob.adelantado],['Matrículas',X.cob.matricula],['Multas',X.cob.multas],['Materiales (libros)',X.cob.materiales],['Otros',X.cob.otros],['Sin aplicar',X.cob.sinAplicar],['Devoluciones',X.cob.devol]]
+  .filter(function(x){return x[1];}).map(function(x){return [esc(x[0]),mil(x[1]),pc(x[1],X.cob.total)];});
+ h+='<div class="card"><h2>💵 Qué se cobró</h2><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))"><div>'+tabla(['Concepto','Gs.','%'],de,[1,2])+'</div><div>'+tabla(['Medio','Gs.','%'],medios,[1,2])+
+  (X.cob.oficina.length>1?'<div style="margin-top:10px">'+tabla(['Dónde','Gs.'],X.cob.oficina.map(function(o){return [esc(o[0]),mil(o[1])];}),[1])+'</div>':'')+'</div></div></div>';
+ if(X.gastos&&X.gastos.cat.length)h+='<div class="card"><h2>🧾 Gastos por categoría</h2>'+tabla(['Categoría','Gs.','%'],X.gastos.cat.map(function(c){return [esc(c[0]),mil(c[1]),pc(c[1],X.gastos.total)];}),[1,2])+'</div>';
+ h+='<div class="card"><h2>🏦 Caja (cierres diarios)</h2>'+(X.caja.length?tabla(['N°','Día','Responsable','Efectivo','Transf.','POS','Total','Gastos ef.','Entregado','Queda'],
+  X.caja.map(function(c){return [c.pdf?'<a href="'+esc(c.pdf)+'" target="_blank">'+esc(c.num)+'</a>':esc(c.num),esc(c.fecha),esc(c.resp),mil(c.ef),mil(c.tr),mil(c.pos),'<b>'+mil(c.total)+'</b>',mil(c.gastos),c.entregado?mil(c.entregado):'–',mil(c.queda)];}),[3,4,5,6,7,8,9]):
+  '<div class="vacio">Todavía no hay cierres de caja este mes.</div>')+'</div>';
+ h+='<div class="card"><h2>⏳ Antigüedad de la deuda</h2>'+tabla(['Atraso','Alumnos','Gs.'],X.antig.map(function(a){return [esc(a.etiqueta),a.n,mil(a.monto)];}),[1,2])+'</div>';
+ h+='<div class="card"><h2>🏫 Por grupo</h2>'+tabla(['Grupo','Activos','Cobrado','Con deuda','Deuda','2+ cuotas'],X.grupos.map(function(g){
+  return [esc(g.nombre),g.activos+(g.anotados?' <small>(+'+g.anotados+')</small>':''),mil(g.cobrado),g.nDeuda||'–',g.deuda?mil(g.deuda):'–',g.dos||'–'];}),[1,2,3,4,5])+
+  '<div class="ayuda" style="margin-top:6px">(+n) = anotados que todavía no empezaron.</div></div>';
+ if(X.dosOMas.length)h+='<div class="card"><h2>🚨 Alumnos con 2 o más cuotas vencidas</h2>'+tabla(['Alumno','Grupo','Cuotas','Deuda'],X.dosOMas.map(function(v){return [esc(v.nombre),esc(v.grupo),v.n,mil(v.deuda)];}),[2,3])+'</div>';
+ if(X.motivos.length)h+='<div class="card"><h2>🚪 Motivos de salida</h2>'+tabla(['Motivo','Alumnos'],X.motivos.map(function(m){return [esc(m[0]),m[1]];}),[1])+'</div>';
+ el('mesC').innerHTML=h;}
+function pc(a,b){return b?Math.round(a/b*100)+'%':'';}
+
+// ================= 🏫 GRUPOS Y SALAS =================
+var SUB=guardado('gaussJefeSub')||'resumen',DIA='',FILAS=[];
+function verGrupos(){el('app').innerHTML='<div class="card">Cargando grupos… (puede tardar unos segundos)</div>';
+ pedir('jefeGrupos',{},function(d){GR=d;if(TAB==='grupos')pintarGrupos();},function(e){falla(e);});}
+function pintarGrupos(){
+ el('app').innerHTML='<div class="subtabs"><button class="btn'+(SUB==='resumen'?'':' gr')+'" onclick="sub(\'resumen\')">📊 Resumen de grupos</button>'+
+  '<button class="btn'+(SUB==='salas'?'':' gr')+'" onclick="sub(\'salas\')">🚪 Distribución de salas</button></div><div id="gC"></div>';
+ if(SUB==='resumen')resumenGrupos();else salas();}
+function sub(s){SUB=s;guardado('gaussJefeSub',s);pintarGrupos();}
+function colorGrupo(g){var t=sa((g.nombre||'')+' '+(g.curso||'')).toUpperCase();
+ if(/FIUNA/.test(t))return['#ff0000','#fff'];if(/POLI/.test(t))return['#6d5bff','#fff'];if(/UPTP/.test(t))return['#7030a0','#fff'];
+ if(/QUIMIC/.test(t))return['#bdd7ee','#000'];if(/INGRESO/.test(t))return['#ffff00','#000'];if(/OMAPA/.test(t))return['#e2efda','#000'];
+ if(/MEDIC/.test(t))return['#f8cbad','#000'];if(/ARQUI/.test(t))return['#c6e0b4','#000'];return['#e7e6e6','#000'];}
+function chipG(g){var c=colorGrupo(g);return '<span class="chip" style="background:'+c[0]+';color:'+c[1]+'">'+esc(g.nombre)+'</span>';}
+function asisTxt(a){return a?a.prom+' <small>(pico '+a.pico+')</small>':'–';}
+function resumenGrupos(){var G=GR.grupos,act=0,anot=0;G.forEach(function(g){act+=g.act;anot+=g.anot;});
+ var h='<div class="card"><h2>🏫 Panorama</h2><div class="grid">'+k('Grupos',G.filter(function(g){return g.empezo;}).length,'',G.filter(function(g){return !g.empezo;}).length?G.filter(function(g){return !g.empezo;}).length+' por empezar':'')+
+  k('Alumnos activos',act,'',anot?anot+' anotados para otro grupo':'')+
+  Object.keys(GR.mods).map(function(m){return k(m,GR.mods[m].alumnos+' alumnos','',GR.mods[m].grupos+' grupos');}).join('')+'</div>'+
+  '<div class="ayuda" style="margin-top:8px">Presentes: promedio por clase de las últimas 4 semanas (y el pico), según las listas del CSA. Datos del '+esc(GR.actualizado)+'.</div></div>';
+ h+='<div class="card"><h2>📊 Grupos</h2>'+tabla(['Grupo','Modalidad','Activos','Pres. L-V mañana','Pres. L-V tarde','Pres. sáb. mañana','Pres. sáb. tarde','🔴 🟡 🟢','Deuda'],G.map(function(g){var a=g.asis||{},s=g.sem;
+  return [chipG(g)+(g.empezo?'':'<br><small>empieza '+esc(g.inicio)+'</small>'),esc(g.mod),'<b>'+g.act+'</b>'+(g.anot?' <small>(+'+g.anot+')</small>':''),
+   asisTxt(a.semm),asisTxt(a.semt),asisTxt(a.sabm),asisTxt(a.sabt),s?s.r+' · '+s.y+' · '+s.g:'–',g.deuda?mil(g.deuda)+' <small>('+g.nDeuda+')</small>':'–'];}),[2,3,4,5,6,8])+'</div>';
+ if(!GR.asisOk)h+='<div class="aviso">No pude leer la asistencia del CSA (revisá "Planilla CSA" en CONFIG).</div>';
+ el('gC').innerHTML=h;}
+
+// ----- distribución de salas -----
+function esSab(g){var t=sa((g.nombre||'')+' '+(g.mod||'')+' '+(g.curso||'')).toUpperCase();return /\bCOL\b|COLEGIO|INGRESO|OMAPA/.test(t);}
+function gPorCod(c){return GR.grupos.filter(function(g){return g.cod===c;})[0];}
+function salas(){DIA=DIA||guardado('gaussJefeDia')||'Sábado';
+ el('gC').innerHTML='<div class="card"><div class="fila"><div><label>Día</label><select id="sD" onchange="cambiarDia(this.value)">'+GR.dias.map(function(d){return '<option'+(d===DIA?' selected':'')+'>'+esc(d)+'</option>';}).join('')+'</select></div>'+
+  '<div><label>Fecha para el título <span class="ayuda">(opcional)</span></label><input type="date" id="sF" onchange="pintarTabla()"></div></div><div id="sInfo" class="ayuda" style="margin-top:8px"></div></div>'+
+  '<div class="card"><div id="sT"></div><div class="fila" style="margin-top:10px"><select id="sAdd" style="flex:1;min-width:180px"></select><button class="mini" onclick="agregarG()">➕ Agregar grupo</button></div>'+
+  '<div id="sChoque"></div><div class="fila" style="margin-top:14px"><button class="btn" id="sG" onclick="guardarSalas()">💾 Guardar distribución</button>'+
+  '<button class="btn rojo" id="sI" onclick="imagen()">📷 Descargar imagen</button></div><div id="sM" style="margin-top:8px"></div></div>';
+ cambiarDia(DIA);}
+function proximaFecha(dia){var idx={'Lunes':1,'Martes':2,'Miércoles':3,'Jueves':4,'Viernes':5,'Sábado':6,'Lunes a viernes':1}[dia],d=new Date();
+ for(var i=0;i<7;i++){if(d.getDay()===idx)break;d.setDate(d.getDate()+1);}
+ return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10);}
+function cambiarDia(d){DIA=d;guardado('gaussJefeDia',d);el('sF').value=proximaFecha(d);
+ var D=GR.dist[d],base=D,info='';
+ if(!D&&d!=='Sábado'&&d!=='Lunes a viernes'&&GR.dist['Lunes a viernes']){base=GR.dist['Lunes a viernes'];info='Arranca con la de "Lunes a viernes". Cambiá lo que sea distinto ese día y guardá.';}
+ if(base){FILAS=base.filas.map(function(f){var g=gPorCod(f.cod)||{cod:f.cod,nombre:f.nombre};return {cod:f.cod,nombre:g.nombre||f.nombre,m:f.m,t:f.t};});
+  if(D)info='Guardada el '+esc(D.guardado)+'.';}
+ else{var sab=d==='Sábado';FILAS=GR.grupos.filter(function(g){return (g.empezo||g.act>0)&&(sab?esSab(g):!esSab(g));}).map(function(g){return {cod:g.cod,nombre:g.nombre,m:'',t:''};});
+  info='Todavía no hay una distribución guardada para '+esc(d)+'. Puse los grupos que suelen venir ese día: sacá o agregá los que hagan falta.';}
+ el('sInfo').innerHTML=info;pintarTabla();}
+function opSalas(sel){var ed={};GR.salas.forEach(function(s){(ed[s.edificio]=ed[s.edificio]||[]).push(s.sala);});
+ return '<option value="">—</option>'+Object.keys(ed).map(function(e){return '<optgroup label="'+esc(e)+'">'+ed[e].map(function(s){return '<option'+(s===sel?' selected':'')+'>'+esc(s)+'</option>';}).join('')+'</optgroup>';}).join('');}
+function choques(){var c={m:{},t:{}},rep={m:{},t:{}};FILAS.forEach(function(f){['m','t'].forEach(function(tu){if(!f[tu])return;if(c[tu][f[tu]])rep[tu][f[tu]]=1;c[tu][f[tu]]=1;});});return rep;}
+function pintarTabla(){var sab=DIA==='Sábado',rep=choques();
+ var h='<div class="scroll"><table><tr><th>#</th><th>Grupo</th><th class="n">Activos</th><th>Mañana</th><th>Tarde</th><th></th></tr>'+FILAS.map(function(f,i){
+  var g=gPorCod(f.cod)||{nombre:f.nombre,asis:{}},a=g.asis||{},am=a[sab?'sabm':'semm'],at=a[sab?'sabt':'semt'];
+  return '<tr><td>'+(i+1)+'<br><button class="mini" onclick="mover('+i+',-1)">▲</button></td><td>'+chipG(g)+'</td><td class="n">'+(g.act!=null?'<b>'+g.act+'</b>':'–')+'</td>'+
+   ['m','t'].map(function(tu){var x=tu==='m'?am:at;return '<td><select class="sel-sala'+(f[tu]&&rep[tu][f[tu]]?' choque':'')+'" onchange="FILAS['+i+'].'+tu+'=this.value;pintarTabla()">'+opSalas(f[tu])+'</select>'+
+    '<div class="ayuda">'+(x?'👥 '+x.prom+' · pico '+x.pico:'sin listas')+'</div></td>';}).join('')+
+   '<td><button class="mini" title="Sacar de este día" onclick="FILAS.splice('+i+',1);pintarTabla()">✕</button></td></tr>';}).join('')+'</table></div>'+
+  '<div class="ayuda" style="margin-top:6px">👥 = presentes por clase en ese turno (promedio y pico de las últimas 4 semanas, '+(sab?'sábados':'lunes a viernes')+'). "—" = ese grupo no tiene clase en ese turno.</div>';
+ el('sT').innerHTML=h;
+ var en={};FILAS.forEach(function(f){en[f.cod]=1;});
+ el('sAdd').innerHTML='<option value="">Elegí un grupo para agregar…</option>'+GR.grupos.filter(function(g){return !en[g.cod];}).map(function(g){return '<option value="'+esc(g.cod)+'">'+esc(g.nombre)+'</option>';}).join('');
+ var l=[];['m','t'].forEach(function(tu){Object.keys(rep[tu]).forEach(function(s){l.push('<b>'+esc(s)+'</b> a la '+(tu==='m'?'mañana':'tarde')+': '+FILAS.filter(function(f){return f[tu]===s;}).map(function(f){return esc(f.nombre);}).join(' y '));});});
+ el('sChoque').innerHTML=l.length?'<div class="aviso" style="background:#f4cccc">⚠️ Sala repetida — '+l.join(' · ')+'</div>':'';
+ el('sG').disabled=el('sI').disabled=!!l.length;el('sM').innerHTML='';}
+function mover(i,d){var j=i+d;if(j<0||j>=FILAS.length)return;var x=FILAS[i];FILAS[i]=FILAS[j];FILAS[j]=x;pintarTabla();}
+function agregarG(){var c=el('sAdd').value;if(!c)return;var g=gPorCod(c);FILAS.push({cod:c,nombre:g.nombre,m:'',t:''});pintarTabla();}
+function guardarSalas(){if(!FILAS.length)return;var b=el('sG');b.disabled=true;b.textContent='Guardando…';
+ pedir('jefeGuardarSalas',{dia:DIA,filas:JSON.stringify(FILAS.map(function(f){return [f.cod,f.nombre,f.m,f.t];}))},function(r){GR.dist=r.dist;b.textContent='💾 Guardar distribución';
+  el('sM').innerHTML='<b style="color:#1b8a3a">✅ Guardada. Los otros jefes ya la ven.</b>';el('sInfo').innerHTML='Guardada el '+esc((r.dist[DIA]||{}).guardado||'')+'.';b.disabled=false;},
+  function(e){b.disabled=false;b.textContent='💾 Guardar distribución';falla(e,'sM');});}
+// imagen como la que se manda al WhatsApp
+function imagen(){var sab=DIA==='Sábado',W=760,rh=34,x0=20,cN=40,cG=300,cT=(W-2*x0-cN-cG)/2,top=20;
+ var f=el('sF').value,ft='';if(f){var p=f.split('-');ft=' '+p[2]+'/'+p[1];}
+ var titulo=(DIA==='Lunes a viernes'?'LUNES A VIERNES':DIA.toUpperCase())+ft;
+ var H=top+44+rh*2+rh*FILAS.length+30,cv=document.createElement('canvas'),s=2;cv.width=W*s;cv.height=H*s;var c=cv.getContext('2d');c.scale(s,s);
+ c.fillStyle='#fff';c.fillRect(0,0,W,H);c.textBaseline='middle';
+ c.fillStyle='#201e1e';c.font='bold 20px Arial';c.textAlign='center';c.fillText('DISTRIBUCIÓN DE SALAS · '+titulo,W/2,top+16);
+ var y=top+44;
+ function celda(x,yy,w,h,txt,bg,fg,bold,al){c.fillStyle=bg||'#fff';c.fillRect(x,yy,w,h);c.strokeStyle='#000';c.lineWidth=1;c.strokeRect(x+.5,yy+.5,w,h);
+  if(txt!==''){c.fillStyle=fg||'#000';c.font=(bold?'bold ':'')+'16px Arial';c.textAlign=al||'left';c.fillText(txt,al==='center'?x+w/2:(al==='right'?x+w-8:x+8),yy+h/2+1);}}
+ celda(x0,y,cN,rh*2,'','#fff');celda(x0+cN,y,cG,rh*2,'GRUPO','#fff','#000',true);celda(x0+cN+cG,y,cT*2,rh,DIA==='Lunes a viernes'?'LUNES A VIERNES':DIA.toUpperCase(),'#fff2a8','#000',true,'center');
+ celda(x0+cN+cG,y+rh,cT,rh,'MAÑANA','#d9e2f3','#000',true,'center');celda(x0+cN+cG+cT,y+rh,cT,rh,'TARDE','#d9e2f3','#000',true,'center');y+=rh*2;
+ FILAS.forEach(function(r,i){var g=gPorCod(r.cod)||{nombre:r.nombre},col=colorGrupo(g);
+  celda(x0,y,cN,rh,String(i+1),'#fff','#000',true,'right');celda(x0+cN,y,cG,rh,(g.nombre||r.nombre).toUpperCase(),col[0],col[1],true);
+  celda(x0+cN+cG,y,cT,rh,r.m?'SALA '+r.m:'—','#fff','#000',false,r.m?'left':'center');celda(x0+cN+cG+cT,y,cT,rh,r.t?'SALA '+r.t:'—','#fff','#000',false,r.t?'left':'center');y+=rh;});
+ c.fillStyle='#888';c.font='12px Arial';c.textAlign='right';c.fillText('Cursillo Gauss',W-x0,y+16);
+ var nombre='Salas '+titulo.replace(/\//g,'-')+'.png';
+ cv.toBlob(function(b){var file=null;try{file=new File([b],nombre,{type:'image/png'});}catch(e){}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:nombre}).catch(function(){});return;}
+  var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nombre;document.body.appendChild(a);a.click();a.remove();
+  el('sM').innerHTML='<b style="color:#1b8a3a">✅ Imagen descargada: '+esc(nombre)+'</b>';},'image/png');}
+
+// ================= 📈 TENDENCIAS =================
+function verTend(){el('app').innerHTML='<div class="card">Calculando tendencias… (puede tardar unos segundos)</div>';
+ pedir('jefeTendencias',{},pintarTend,function(e){falla(e);});}
+function pintarTend(T){if(TAB!=='tend')return;var S=T.semanas,maxA=Math.max.apply(null,S.map(function(s){return s.activos;}).concat([1]));
+ var bar=function(v,max,col){return '<div class="bar"><i style="width:'+Math.round((v||0)/max*100)+'%;'+(col?'background:'+col:'')+'"></i></div>';};
+ var h='<div class="card"><h2>📈 Últimas 12 semanas</h2>'+tabla(['Semana del','Activos','','Nuevos','Pases','Salieron','Asistencia',''],S.map(function(s){
+  return [esc(s.desde),'<b>'+s.activos+'</b>',bar(s.activos,maxA),s.nuevos||'–',s.pases||'–',s.salieron?'<span class="down">'+s.salieron+'</span>':'–',
+   s.asis===null?'–':s.asis+'%',s.asis===null?'':bar(s.asis,100,s.asis>=85?'#1b8a3a':(s.asis>=70?'#b7950b':'#c0392b'))];}),[1,3,4,5,6])+
+  '<div class="ayuda" style="margin-top:6px">Activos al final de cada semana · Nuevos = primera vez en Gauss · Pases = cambio de grupo o pase al intensivo · Asistencia = % de presentes en las listas del CSA.</div></div>';
+ h+='<div class="card"><h2>🔴 Grupos que más preocupan</h2>'+tabla(['Grupo','🔴','🟡','🟢','% en rojo'],T.rojos.map(function(g){var t=g.r+g.y+g.g;return [esc(g.nombre),g.r,g.y,g.g,t?Math.round(g.r/t*100)+'%':'–'];}),[1,2,3,4])+'</div>';
+ h+='<div class="card"><h2>🚪 Por qué se van (12 semanas)</h2>'+tabla(['Motivo','Alumnos'],T.motivos.map(function(m){return [esc(m[0]),m[1]];}),[1])+'</div>';
+ el('app').innerHTML=h;}
+</script></body></html>
