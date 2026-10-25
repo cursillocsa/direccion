@@ -60,6 +60,7 @@ input,select{font-size:16px;padding:9px;border:1px solid #bbb;border-radius:8px;
 <button class="tab" data-t="mes" onclick="ir('mes')">📅 Cómo va el mes</button>
 <button class="tab" data-t="grupos" onclick="ir('grupos')">🏫 Grupos y salas</button>
 <button class="tab" data-t="tend" onclick="ir('tend')">📈 Tendencias</button>
+<button class="tab" data-t="cuot" onclick="ir('cuot')">💳 Cuotero</button>
 </div>
 <input id="q" placeholder="Buscá al alumno por nombre, apellido o ID…" autocomplete="off" oninput="filtrar()">
 <div id="res"></div></header>
@@ -91,7 +92,7 @@ function sbMarca(h){var m=el('sbMarca');if(!m){m=document.createElement('div');m
 function rapido(acc,params,tipo,clave,ok,mal,refresco){
  var n=++NAV;sbMarca('');
  sbLeer(tipo,clave,function(d,t){
-  if(n!==NAV)return;TOCADO=false;ok(d);sbMarca('⚡ Copia rápida ('+esc(haceCuanto(t))+') · confirmando con la planilla…');
+  if(n!==NAV)return;TOCADO=false;ok(d);sbMarca('⚡ Vista rápida · confirmando con la planilla…');
   pedir(acc,params,function(D){
    if(n!==NAV)return;
    if(estable(D)===estable(d)){sbMarca('✅ Confirmado con la planilla');setTimeout(function(){if(n===NAV)sbMarca('');},2500);return;}
@@ -99,7 +100,7 @@ function rapido(acc,params,tipo,clave,ok,mal,refresco){
    if(!TOCADO||refresco){aplicar();return;}
    NUEVO=aplicar;sbMarca('<b style="color:#b45f06">🔄 La planilla tiene datos más nuevos.</b> <button onclick="NUEVO()" style="font-size:12px">Actualizar</button>');
   },function(e){if(n!==NAV)return;if(String(e.message||'').indexOf('PIN:')>=0){mal(e);return;}
-   sbMarca('<span style="color:#c0392b">⚠️ No se pudo confirmar con la planilla (se ve la copia rápida).</span>');});
+   sbMarca('<span style="color:#c0392b">⚠️ No se pudo confirmar con la planilla (se ve la vista rápida).</span>');});
  },function(){if(n===NAV)pedir(acc,params,function(D){if(n===NAV)ok(D);},function(e){if(n===NAV)mal(e);});});}
 function el(i){return document.getElementById(i);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -132,7 +133,7 @@ cargar();
 function ir(t){TAB=t;NAV++;sbMarca('');guardado('gaussJefeTab',t);msg('');el('res').style.display='none';
  [].forEach.call(document.querySelectorAll('.tab'),function(b){b.className='tab'+(b.getAttribute('data-t')===t?' on':'');});
  el('q').style.display=t==='alumno'?'block':'none';window.scrollTo(0,0);
- if(t==='alumno')inicioAlumno();else if(t==='mes')verMes(guardado('gaussJefeMes')||'');else if(t==='grupos')verGrupos();else verTend();}
+ if(t==='alumno')inicioAlumno();else if(t==='mes')verMes(guardado('gaussJefeMes')||'');else if(t==='grupos')verGrupos();else if(t==='cuot')verCuot();else verTend();}
 function k(t,v,cl,sub){return '<div class="k '+(cl||'')+'"><span>'+esc(t)+'</span><b>'+(v===''||v==null?'–':v)+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</div>';}
 function delta(a,b,txtPrev,inverso){if(b===null||b===undefined)return '';var d=a-b;if(!d)return 'igual que '+esc(txtPrev);
  var bien=inverso?d<0:d>0;return '<span class="'+(bien?'up':'down')+'">'+(d>0?'▲ ':'▼ ')+(Math.abs(d)>=1000?mil(Math.abs(d)):Math.abs(d))+'</span> vs '+esc(txtPrev);}
@@ -326,4 +327,103 @@ function pintarTend(T){if(TAB!=='tend')return;var S=T.semanas,maxA=Math.max.appl
  h+='<div class="card"><h2>🔴 Grupos que más preocupan</h2>'+tabla(['Grupo','🔴','🟡','🟢','% en rojo'],T.rojos.map(function(g){var t=g.r+g.y+g.g;return [esc(g.nombre),g.r,g.y,g.g,t?Math.round(g.r/t*100)+'%':'–'];}),[1,2,3,4])+'</div>';
  h+='<div class="card"><h2>🚪 Por qué se van (12 semanas)</h2>'+tabla(['Motivo','Alumnos'],T.motivos.map(function(m){return [esc(m[0]),m[1]];}),[1])+'</div>';
  el('app').innerHTML=h;}
+
+// ================= 💳 CUOTERO =================
+var CQ=null,CQ_F=guardado('gaussCuotF')||'todos',CQ_G='',CQ_DEBEN=false,CQ_MONTOS=guardado('gaussCuotMontos')==='1';
+var CQ_COL={P:'#93c47d',V:'#e06666',Y:'#ffd966',E:'#f6b26b',F:'#ffffff',X:'#fff2cc',B:'#9fc5e8'};
+var CQ_TXT={P:'Pagado',V:'Vencida',Y:'Vencida (pagó una parte)',E:'En espera ⏳',F:'Por vencer',X:'Por vencer (pagó una parte)',B:'Beca / perdonada'};
+var MES3=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function verCuot(){el('app').innerHTML='<div class="card">Cargando el cuotero…</div>';
+ rapido('jefeCuotero',{},'jefeCuotero','todo',function(d){CQ=d;if(TAB==='cuot')pintarCuot();},function(e){falla(e);});}
+function cqFiltrados(){var G=CQ.grupos;return CQ.alumnos.filter(function(x){var g=G[x.g]||{};
+ if(CQ_F.indexOf('mod:')===0&&g.mod!==CQ_F.slice(4))return false;if(CQ_F.indexOf('cur:')===0&&g.curso!==CQ_F.slice(4))return false;
+ if(CQ_G&&x.g!==CQ_G)return false;return true;});}
+function cqNum(l){var hoy=CQ.hoy,R={deuda:0,nDeuda:0,salio:0,nSalio:0,c1:0,c0:0,mM:0,mS:0,alDia:0,dos:0,esp:0,espM:0,v7:0,act:0};
+ l.forEach(function(x){
+  if(x.a){R.act++;R.deuda+=x.d;if(x.d>0)R.nDeuda++;else R.alDia++;}else if(x.d>0){R.salio+=x.d;R.nSalio++;}
+  R.c1+=x.c1;R.c0+=x.c0;R.v7+=x.v7;
+  var c=x.m[hoy];if(c&&c[0]!=='B'){R.mM+=c[2];R.mS+=c[1];}
+  var nv=0,e=0;Object.keys(x.m).forEach(function(k){var y=x.m[k];if(y[0]==='V'||y[0]==='Y')nv++;if(y[0]==='E')e+=y[1];});
+  if(nv>=2&&x.a)R.dos++;if(e>0){R.esp++;R.espM+=e;}});
+ return R;}
+function cqMesTxt(k,conAnio){var p=k.split('-');return MES3[Number(p[1])-1]+(conAnio?' '+p[0].slice(2):'');}
+function pintarCuot(){if(!CQ)return;var l=cqFiltrados(),R=cqNum(l),G=CQ.grupos;
+ var mods={},curs={};Object.keys(G).forEach(function(g){if(G[g].mod)mods[G[g].mod]=1;if(G[g].curso)curs[G[g].curso]=1;});
+ var opt=function(v,t){return '<option value="'+esc(v)+'"'+(CQ_F===v?' selected':'')+'>'+esc(t)+'</option>';};
+ var grs=Object.keys(G).filter(function(g){var x=G[g];return CQ_F==='todos'||(CQ_F.indexOf('mod:')===0&&x.mod===CQ_F.slice(4))||(CQ_F.indexOf('cur:')===0&&x.curso===CQ_F.slice(4));})
+  .sort(function(a,b){return a.localeCompare(b,'es',{numeric:true});});
+ if(CQ_G&&grs.indexOf(CQ_G)<0)CQ_G='';
+ var pctMes=R.mM?Math.round((R.mM-R.mS)/R.mM*100):null,d=R.c1-R.c0;
+ var h='<div class="card"><h2>💳 Cuotero <span class="ayuda" style="font-weight:normal">· al '+esc(CQ.dia)+'</span></h2><div class="grid">'+
+  k('Deuda vencida',gs(R.deuda),R.deuda>0?'r':'g',R.nDeuda+' de '+R.act+' alumnos activos')+
+  k('Cobrado este mes',gs(R.c1),'',d?'<span class="'+(d>0?'up':'down')+'">'+(d>0?'▲ ':'▼ ')+gs(Math.abs(d))+'</span> vs el mes pasado a esta fecha':'igual que el mes pasado')+
+  k('Cuotas de este mes',pctMes===null?'–':pctMes+'% cobrado',pctMes===null?'':(pctMes>=80?'g':(pctMes>=60?'y':'r')),R.mS?'faltan '+gs(R.mS):'')+
+  k('Al día · con deuda',R.alDia+' · '+R.nDeuda,'','alumnos activos')+
+  k('2 o más cuotas vencidas',R.dos,R.dos?'r':'')+
+  k('En espera ⏳',R.esp,'',R.esp?gs(R.espM):'')+
+  k('Vence en los próximos 7 días',gs(R.v7))+
+  k('Deuda de los que salieron',gs(R.salio),R.salio?'y':'',R.nSalio+' alumnos')+'</div></div>';
+ h+='<div class="card"><div class="fila"><div style="flex:1;min-width:180px"><label>Ver</label><select style="width:100%" onchange="CQ_F=this.value;guardado(\'gaussCuotF\',CQ_F);CQ_G=\'\';pintarCuot()">'+
+  opt('todos','Todos')+'<optgroup label="Modalidad">'+Object.keys(mods).sort().map(function(m){return opt('mod:'+m,m);}).join('')+'</optgroup>'+
+  '<optgroup label="Curso">'+Object.keys(curs).sort().map(function(c){return opt('cur:'+c,c);}).join('')+'</optgroup></select></div>'+
+  '<div style="flex:1;min-width:180px"><label>Grupo</label><select style="width:100%" onchange="CQ_G=this.value;pintarCuot()"><option value="">Todos los grupos</option>'+
+  grs.map(function(g){return '<option'+(g===CQ_G?' selected':'')+'>'+esc(g)+'</option>';}).join('')+'</select></div></div>'+
+  '<div style="margin-top:10px;display:flex;gap:16px;flex-wrap:wrap;font-size:14px">'+
+  '<label><input type="checkbox" style="width:auto;padding:0"'+(CQ_DEBEN?' checked':'')+' onchange="CQ_DEBEN=this.checked;pintarCuot()"> Solo los que deben</label>'+
+  '<label><input type="checkbox" style="width:auto;padding:0"'+(CQ_MONTOS?' checked':'')+' onchange="CQ_MONTOS=this.checked;guardado(\'gaussCuotMontos\',CQ_MONTOS?\'1\':\'0\');pintarCuot()"> Mostrar montos (en miles)</label></div></div>';
+ h+='<div class="card" style="padding:10px"><div id="cqT"></div><div class="ayuda" style="margin-top:8px">'+
+  ['P','V','Y','E','F','B'].map(function(c){return '<span style="display:inline-block;width:12px;height:12px;border:1px solid #999;background:'+CQ_COL[c]+';vertical-align:middle"></span> '+CQ_TXT[c];}).join(' &nbsp; ')+
+  (CQ_MONTOS?'<br>Montos en miles: 700 = Gs. 700.000.':'')+'</div>'+
+  '<button class="btn" style="margin-top:10px" onclick="imagenCuot()">📲 Compartir imagen</button></div>';
+ el('app').innerHTML=h;
+ el('cqT').innerHTML=tablaCuot(l);}
+function cqMeses(l){var m={};l.forEach(function(x){Object.keys(x.m).forEach(function(k){m[k]=1;});});return Object.keys(m).sort();}
+function cqFilas(l){var out=[],porG={};l.forEach(function(x){(porG[x.g]=porG[x.g]||[]).push(x);});
+ Object.keys(porG).sort(function(a,b){return a.localeCompare(b,'es',{numeric:true});}).forEach(function(g){
+  var act=porG[g].filter(function(x){return x.a&&(!CQ_DEBEN||x.d>0);}),sal=porG[g].filter(function(x){return !x.a&&x.d>0;});
+  if(!act.length&&!sal.length)return;out.push({grupo:g,n:act.length});
+  act.forEach(function(x){out.push({al:x});});sal.forEach(function(x){out.push({al:x,salio:true});});});
+ return out;}
+function tablaCuot(l){var meses=cqMeses(l),filas=cqFilas(l);if(!filas.length)return '<div class="vacio">— nadie para mostrar —</div>';
+ var dosAnios=meses.length&&meses[0].slice(0,4)!==meses[meses.length-1].slice(0,4),W=CQ_MONTOS?44:26;
+ var h='<div class="scroll" style="max-height:70vh;overflow:auto"><table style="width:auto;border-collapse:separate;border-spacing:0;font-size:12px">'+
+  '<tr><th style="position:sticky;left:0;top:0;z-index:3;background:#d9e2f3;min-width:130px;max-width:150px">Alumno</th>'+
+  meses.map(function(k,i){var anio=dosAnios&&(i===0||k.slice(5)==='01');return '<th style="position:sticky;top:0;z-index:2;text-align:center;padding:3px 1px;font-size:11px;line-height:1.1;width:'+W+'px;min-width:'+W+'px;max-width:'+W+'px'+(k===CQ.hoy?';background:#ffe599':'')+'">'+cqMesTxt(k,false)+(anio?'<br><small style="font-weight:normal">'+k.slice(2,4)+'</small>':'')+'</th>';}).join('')+
+  '<th class="n" style="position:sticky;top:0;z-index:2">Debe'+(CQ_MONTOS?'':'')+'</th></tr>';
+ filas.forEach(function(f){
+  if(f.grupo){h+='<tr><td colspan="'+(meses.length+2)+'" style="background:#201e1e;color:#fff;font-weight:bold;padding:5px 6px;position:sticky;left:0">'+esc(f.grupo)+' <span style="font-weight:normal;opacity:.75">· '+f.n+'</span></td></tr>';return;}
+  var x=f.al,nm='<td title="'+esc(x.n)+'" style="position:sticky;left:0;background:'+(f.salio?'#eee':'#fff')+';z-index:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;padding:3px 6px;border-bottom:1px solid #eee'+(f.salio?';color:#888':'')+'">'+esc(x.n)+'</td>';
+  if(f.salio){h+='<tr>'+nm+'<td colspan="'+meses.length+'" style="background:#eee;color:#888;font-style:italic;padding:3px 6px">salió</td><td class="n" style="background:#eee;color:#a61c1c;font-weight:bold;padding:3px 6px">'+mil(x.d/1000)+'</td></tr>';return;}
+  h+='<tr>'+nm+meses.map(function(k){var c=x.m[k];if(!c)return '<td style="background:#f3f3f3;border:1px solid #fff"></td>';
+   var t=CQ_MONTOS&&c[1]>0&&c[0]!=='F'?mil(c[1]/1000):'';
+   return '<td title="'+esc(cqMesTxt(k,true)+': '+CQ_TXT[c[0]]+(c[1]>0?' · debe '+gs(c[1]):''))+'" style="background:'+CQ_COL[c[0]]+';border:1px solid #fff;text-align:center;padding:3px 2px;font-size:11px">'+t+'</td>';}).join('')+
+   '<td class="n" style="padding:3px 6px;font-weight:bold;'+(x.d>0?'color:#a61c1c':'color:#1b5e20')+'">'+(x.d>0?mil(x.d/1000):'✓')+'</td></tr>';});
+ // totales por mes: % cobrado de lo que ya venció
+ var tot=meses.map(function(k){var M=0,S=0;l.forEach(function(x){var c=x.m[k];if(c&&c[0]!=='B'&&c[0]!=='F'&&c[0]!=='X'){M+=c[2];S+=c[1];}});return M?Math.round((M-S)/M*100):null;});
+ h+='<tr><td style="position:sticky;left:0;background:#d9e2f3;font-weight:bold;padding:4px 6px">% cobrado</td>'+tot.map(function(p){return '<td style="background:#d9e2f3;text-align:center;font-size:10px;font-weight:bold;padding:4px 1px">'+(p===null?'':p+'%')+'</td>';}).join('')+'<td style="background:#d9e2f3"></td></tr>';
+ return h+'</table></div>'+(CQ_MONTOS?'':'<div class="ayuda" style="margin-top:4px">"Debe" en miles: 4.200 = Gs. 4.200.000.</div>');}
+// imagen para WhatsApp (lo que se ve con el filtro elegido)
+function imagenCuot(){var l=cqFiltrados(),meses=cqMeses(l),filas=cqFilas(l);if(!filas.length)return;
+ var cN=230,cw=CQ_MONTOS?46:28,rh=22,x0=14,W=x0*2+cN+cw*meses.length+70,H=60+rh*(filas.length+2)+30,s=2,cv=document.createElement('canvas');
+ cv.width=W*s;cv.height=H*s;var c=cv.getContext('2d');c.scale(s,s);c.fillStyle='#fff';c.fillRect(0,0,W,H);c.textBaseline='middle';
+ var tit='CUOTERO · '+(CQ_G||(CQ_F==='todos'?'TODOS':CQ_F.slice(4)))+' · al '+CQ.dia;
+ c.fillStyle='#201e1e';c.font='bold 16px Arial';c.textAlign='left';c.fillText(tit,x0,22);
+ var y=44,dosAnios=meses.length&&meses[0].slice(0,4)!==meses[meses.length-1].slice(0,4);
+ c.font='bold 11px Arial';c.textAlign='center';meses.forEach(function(k,i){c.fillStyle=k===CQ.hoy?'#b45f06':'#333';c.fillText(cqMesTxt(k,dosAnios),x0+cN+cw*i+cw/2,y+rh/2);});
+ c.textAlign='right';c.fillStyle='#333';c.fillText('Debe (mil)',W-x0,y+rh/2);y+=rh;
+ filas.forEach(function(f){
+  if(f.grupo){c.fillStyle='#201e1e';c.fillRect(x0,y,W-2*x0,rh);c.fillStyle='#fff';c.font='bold 12px Arial';c.textAlign='left';c.fillText(f.grupo+' · '+f.n,x0+6,y+rh/2+1);y+=rh;return;}
+  var x=f.al;c.font='12px Arial';c.textAlign='left';c.fillStyle=f.salio?'#999':'#222';
+  var nom=x.n;while(c.measureText(nom).width>cN-10&&nom.length>4)nom=nom.slice(0,-2);if(nom!==x.n)nom+='…';c.fillText(nom,x0+4,y+rh/2+1);
+  if(f.salio){c.fillStyle='#eee';c.fillRect(x0+cN,y+1,cw*meses.length,rh-2);c.fillStyle='#999';c.font='italic 11px Arial';c.fillText('salió',x0+cN+6,y+rh/2+1);}
+  else meses.forEach(function(k,i){var v=x.m[k];c.fillStyle=v?CQ_COL[v[0]]:'#f3f3f3';c.fillRect(x0+cN+cw*i+1,y+1,cw-2,rh-2);
+   if(v&&v[0]==='F'){c.strokeStyle='#ccc';c.strokeRect(x0+cN+cw*i+1.5,y+1.5,cw-3,rh-3);}
+   if(CQ_MONTOS&&v&&v[1]>0&&v[0]!=='F'){c.fillStyle='#000';c.font='10px Arial';c.textAlign='center';c.fillText(mil(v[1]/1000),x0+cN+cw*i+cw/2,y+rh/2+1);}});
+  c.textAlign='right';c.font='bold 12px Arial';c.fillStyle=x.d>0?'#a61c1c':'#1b5e20';c.fillText(x.d>0?mil(x.d/1000):'✓',W-x0,y+rh/2+1);y+=rh;});
+ c.fillStyle='#888';c.font='11px Arial';c.textAlign='left';c.fillText('Verde pagado · rojo vencida · amarillo pagó una parte · naranja en espera · blanco por vencer · celeste beca',x0,y+16);
+ c.textAlign='right';c.fillText('Cursillo Gauss',W-x0,y+16);
+ var nombre='Cuotero '+(CQ_G||(CQ_F==='todos'?'todos':CQ_F.slice(4)))+' '+CQ.dia.replace(/\//g,'-')+'.png';
+ cv.toBlob(function(b){var file=null;try{file=new File([b],nombre,{type:'image/png'});}catch(e){}
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:nombre}).catch(function(){});return;}
+  var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=nombre;document.body.appendChild(a);a.click();a.remove();},'image/png');}
 </script></body></html>
