@@ -53,8 +53,9 @@ input,select{font-size:16px;padding:9px;border:1px solid #bbb;border-radius:8px;
 .fila{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
 .fila label{font-size:13px;font-weight:bold;display:block;margin-bottom:4px}
 .ayuda{color:#777;font-size:12px}
+header h1 span.tit{color:inherit}h1 .tit{cursor:pointer;-webkit-tap-highlight-color:transparent}h1 .tit:active{opacity:.6}
 </style></head><body>
-<header><div class="top"><h1>👔 Panel de jefes <span>Gauss</span></h1></div>
+<header><div class="top"><h1><span class="tit" onclick="if(L)ir('alumno')" title="Ir al inicio">👔 Panel de jefes <span>Gauss</span></span></h1></div>
 <div class="tabs" id="tabs" style="display:none">
 <button class="tab" data-t="alumno" onclick="ir('alumno')">🔎 Alumno</button>
 <button class="tab" data-t="mes" onclick="ir('mes')">📅 Cómo va el mes</button>
@@ -169,7 +170,7 @@ function pintarFicha(f){msg('');var c=f.csa||{};
   (f.favor?k('Saldo a favor',gs(f.favor),'g'):'')+'</div></div>';
  h+='<div class="card"><h2>📅 Asistencia y notas</h2>'+(f.csa?'<div class="grid">'+
   k('Asistencia total',c.total===''?'':c.total+'%',pc(c.total))+k('Últimos 30 días',c.d30===''?'':c.d30+'%',pc(c.d30))+
-  k('Faltas esta semana',c.faltasSem||0,c.faltasSem>0?'y':'')+k('Última ausencia',esc(c.ultAus))+
+  k('Faltas esta semana',c.faltasSem||0,c.faltasSem>0?'y':'')+k('Última vez que vino',esc(c.ultVino||''))+k('Última ausencia',esc(c.ultAus))+
   k('Promedio exámenes',c.prom,c.prom===''?'':(c.prom<40?'r':(c.prom<60?'y':'g')),c.tend?esc(c.tend):'')+
   k('Último contacto',esc(c.ultContacto))+'</div>'+(c.prof?'<div class="sub" style="margin-top:8px">Prof. encargado: '+esc(c.prof)+'</div>':''):
   '<div class="vacio">'+esc(f.csaError||'Todavía no figura en el CSA.')+'</div>')+'</div>';
@@ -243,6 +244,9 @@ function resumenGrupos(){var G=GR.grupos,act=0,anot=0;G.forEach(function(g){act+
   k('Alumnos activos',act,'',anot?anot+' anotados para otro grupo':'')+
   Object.keys(GR.mods).map(function(m){return k(m,GR.mods[m].alumnos+' alumnos','',GR.mods[m].grupos+' grupos');}).join('')+'</div>'+
   '<div class="ayuda" style="margin-top:8px">Presentes: promedio por clase de las últimas 4 semanas (y el pico), según las listas del CSA. Datos del '+esc(GR.actualizado)+'.</div></div>';
+ var RS=GR.reservas||{},rk=Object.keys(RS).sort(function(a,b){return RS[b]-RS[a];}),rt=rk.reduce(function(t,x){return t+RS[x];},0);
+ if(rt)h+='<div class="card" style="background:#f3eefc"><h2>📌 Reservas sin grupo · '+rt+'</h2><div class="ayuda" style="margin-bottom:6px">Pagaron (o anotaron) la matrícula para guardar lugar y todavía no tienen grupo.</div>'+
+  tabla(['Le interesa','Alumnos'],rk.map(function(x){return [esc(x),RS[x]];}),[1])+'</div>';
  h+='<div class="card"><h2>📊 Grupos</h2>'+tabla(['Grupo','Modalidad','Activos','Pres. L-V mañana','Pres. L-V tarde','Pres. sáb. mañana','Pres. sáb. tarde','🔴 🟡 🟢','Deuda'],G.map(function(g){var a=g.asis||{},s=g.sem;
   return [chipG(g)+(g.empezo?'':'<br><small>empieza '+esc(g.inicio)+'</small>'),esc(g.mod),'<b>'+g.act+'</b>'+(g.anot?' <small>(+'+g.anot+')</small>':''),
    asisTxt(a.semm),asisTxt(a.semt),asisTxt(a.sabm),asisTxt(a.sabt),s?s.r+' · '+s.y+' · '+s.g:'–',g.deuda?mil(g.deuda)+' <small>('+g.nDeuda+')</small>':'–'];}),[2,3,4,5,6,8])+'</div>';
@@ -331,7 +335,7 @@ function pintarTend(T){if(TAB!=='tend')return;var S=T.semanas,maxA=Math.max.appl
 // ================= 💳 CUOTERO =================
 var CQ=null,CQ_F=guardado('gaussCuotF')||'todos',CQ_G='',CQ_DEBEN=false,CQ_MONTOS=guardado('gaussCuotMontos')==='1';
 var CQ_COL={P:'#93c47d',V:'#e06666',Y:'#ffd966',E:'#f6b26b',F:'#ffffff',X:'#fff2cc',B:'#9fc5e8'};
-var CQ_TXT={P:'Pagado',V:'Vencida',Y:'Vencida (pagó una parte)',E:'En espera ⏳',F:'Por vencer',X:'Por vencer (pagó una parte)',B:'Beca / perdonada'};
+var CQ_TXT={P:'Pagado',V:'Vencida',Y:'Vencida (pagó una parte)',E:'En espera ⏳',F:'Por vencer',X:'Por vencer (pagó una parte)',B:'Beca / sin costo'};
 var MES3=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 function verCuot(){el('app').innerHTML='<div class="card">Cargando el cuotero…</div>';
  rapido('jefeCuotero',{},'jefeCuotero','todo',function(d){CQ=d;if(TAB==='cuot')pintarCuot();},function(e){falla(e);});}
