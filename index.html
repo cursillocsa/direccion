@@ -131,7 +131,9 @@ function cargar(){el('app').innerHTML='';msg('Cargando…');
   function(){pedir('lista',{},function(d){L=d;listo();},function(e){falla(e);});});}
 el('app').addEventListener('input',function(){TOCADO=true;});
 cargar();
-function ir(t){TAB=t;NAV++;sbMarca('');guardado('gaussJefeTab',t);msg('');el('res').style.display='none';
+// ◀ deslizar para atrás: vuelve a la pestaña o ficha anterior
+window.addEventListener('popstate',function(e){var s=e.state||{};if(s.ficha){ficha(s.ficha,true);return;}ir(s.tab||'alumno',true);});
+function ir(t,desdeHist){if(!TAB&&window.history&&history.replaceState){try{history.replaceState({tab:t},'');}catch(e){}}if(!desdeHist&&TAB&&TAB!==t&&window.history&&history.pushState){try{history.pushState({tab:t},'');}catch(e){}}TAB=t;NAV++;sbMarca('');guardado('gaussJefeTab',t);msg('');el('res').style.display='none';
  [].forEach.call(document.querySelectorAll('.tab'),function(b){b.className='tab'+(b.getAttribute('data-t')===t?' on':'');});
  el('q').style.display=t==='alumno'?'block':'none';window.scrollTo(0,0);
  if(t==='alumno')inicioAlumno();else if(t==='mes')verMes(guardado('gaussJefeMes')||'');else if(t==='grupos')verGrupos();else if(t==='cuot')verCuot();else verTend();}
@@ -154,7 +156,7 @@ function filtrar(){var q=sa(el('q').value.trim()),r=el('res');
  r.innerHTML=h.length?h.map(function(x){return '<div onclick="ficha(\''+esc(x[0])+'\')"><span>'+esc(x[1])+'<br><small>'+esc(x[0])+' · '+esc(x[2]||'sin grupo')+' · '+esc(x[3])+'</small></span>'+
   '<span class="badge '+(x[4]>0?'bR':'bG')+'">'+(x[4]>0?'Debe '+gs(x[4]):'Al día')+'</span></div>';}).join(''):'<div class="vacio">No hay coincidencias</div>';
  r.style.display='block';}
-function ficha(id){el('res').style.display='none';el('q').blur();el('app').innerHTML='';msg('Cargando ficha…');
+function ficha(id,desdeHist){if(!desdeHist&&window.history&&history.pushState){try{history.pushState({ficha:id,tab:TAB},'');}catch(e){}}el('res').style.display='none';el('q').blur();el('app').innerHTML='';msg('Cargando ficha…');
  rapido('jefeFicha',{id:id},'jefeFicha',id,pintarFicha,function(e){falla(e);});}
 function pintarFicha(f){msg('');var c=f.csa||{};
  var sc=c.sem==='🔴'?'r':(c.sem==='🟡'?'y':(c.sem==='🟢'?'g':''));
